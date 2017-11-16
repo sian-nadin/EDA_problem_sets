@@ -1,0 +1,108 @@
+---
+title: "gapminder"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Questions
+The questions we would like to answer are the following:
+
+1. How did Life Expectancy at Birth (LEB) and its distribution among countries evolve overall since the middle of the 20th century?
+2. What are the periods where it has changed the most?
+3. How did the evolution of LEB compare between countries
+
+```{r}
+#Read in data
+life_exp <- read.csv('life_expectancy_at_birth.csv')
+colnames(life_exp)[1] <- "country"
+life_exp[1:5, 1:5]
+```
+
+We will focus on the years 1900 onwrads
+```{r}
+#install.packages("dplyr")
+#install.packages("tidyr")
+library(tidyr)
+library(dplyr)
+
+life_expectancy <- select(life_exp, country, num_range("X", 1900:2016))
+dim(life_expectancy)
+life_expectancy[1:5, 1:5]
+```
+The data contains 260 countries over 117 years (+ the “country” column). We note that there are NAs in the dataset.
+
+LEB distribution in 1900 vs. 2016
+For an overview idea of the data, we compute some summary statistics and plot the data distribution for 1900 and 2016 (first and latest years in the sample):
+```{r}
+summary(life_expectancy$X1900)
+```
+
+```{r}
+summary(life_expectancy$X2016)
+```
+
+## Histogram for both years:
+```{r}
+#install.packages('gridExtra')
+library(gridExtra)
+install.packages("gglpot2")
+library(ggplot2)
+
+p1 <- ggplot(aes(x= X1900), data = life_expectancy) +
+  geom_histogram(binwidth = 1, color=I('black'), fill=I('#5760AB')) +
+  ggtitle("Life expectancy in 1900") +
+  scale_x_continuous() +
+  xlab("Age")
+
+p2 <- ggplot(aes(x=X2016), data = life_expectancy) +
+    geom_histogram(binwidth = 1, color=I('black'), fill=I('#5760AB')) +
+  ggtitle("Life expectancy in 2016") +
+  scale_x_continuous() +
+  xlab("Age")
+
+grid.arrange(p1, p2, ncol=1)
+
+```
+
+These numbers and plots show that the modern world is a radically different place from 1900. The mean LBE moved from 33 to 72.6 years while the minimum LBE more than doubled from 18.35 to 48.9. 
+
+These trends are obvious from the histograms. The whole plot shifted to the right between 1900 and 2016. The data from 1900 is close to a ormal distribution and exhibits almost no skewness.
+In contrast, the 2016 data is closer to unimodal, less spread out and negatively skewed (the left tail is longer than the right tail). In other words, the majority of countries are above the average – an observation confirmed by the fact that median > mean.
+
+## Evolution of LEB over time
+To get a better sense for the rate of improvement in LEB, we want to compare LEB distributions accross countries at a few regularly spaced dates. We will focus on years 1900 to 2016 by 20-year increments.
+
+We plot the distribution for each of the selected years using frequency polygons, which allow us to represent several data series on the same plot.
+
+```{r}
+# Convert data to long format:
+le_long <- gather(life_expectancy, key = year, value = life_exp, -country, convert = TRUE)
+le_long$year <- as.factor(sub('X', '', le_long$year))
+
+# Subset 15-year periods:
+fifteen_y <- as.character(seq(1900, 2016, 15))
+le_fifteen <- filter(le_long, year %in% fifteen_y)
+```
+
+```{r}
+ggplot(aes(x = life_exp), data = le_fifteen) +
+    theme_dark() +
+    geom_freqpoly(aes(color = year), binwidth = 5, size = 1) +
+    scale_color_brewer(type = 'seq', palette = 'Blues')
+```
+
+It would appear that the biggest changes happened in the years 1960 onwards, with the distribution’s shape shifting from normal to bimodal to with negative skeweness. The rate of change seems comparatively slower in the years after that.
+
+Boxplots will allow a more quantittive view
+```{r}
+ten_y <- as.character(seq(1900, 2016, 10))
+le_ten <- filter(le_long, year %in% ten_y)
+ggplot(aes(x = year, y = life_exp), data = le_ten) +
+    theme_dark() +
+    geom_boxplot(fill = "lightsteelblue") + 
+    ggtitle("Life Expectancy Worldwide, 1950-2016")
+```
+
